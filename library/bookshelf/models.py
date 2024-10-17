@@ -2,14 +2,10 @@ from django.db import models
 from django.conf import settings
 from accounts.models import User
 # Create your models here.
-class Author(models.Model):
-    name = models.CharField(max_length=100)
-    def __str__(self):
-        return self.name
 
 class Book(models.Model):
     title = models.CharField(max_length=255)
-    author = models.ForeignKey(Author, on_delete=models.CASCADE)
+    author = models.CharField(max_length= 200)
     isbn = models.CharField(max_length=13, unique=True)
     published_date = models.DateTimeField()
     publisher = models.CharField(max_length=255)
