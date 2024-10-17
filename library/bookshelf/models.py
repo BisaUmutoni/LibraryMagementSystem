@@ -1,9 +1,9 @@
 from django.db import models
-from django.conf import settings
-from accounts.models import User
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 # Create your models here.
-
-class Book(models.Model):
+User = get_user_model()
+class Book(models.Model): # Model to mange Book creation
     title = models.CharField(max_length=255)
     author = models.CharField(max_length= 200)
     isbn = models.CharField(max_length=13, unique=True)
@@ -11,8 +11,18 @@ class Book(models.Model):
     publisher = models.CharField(max_length=255)
     copies_available = models.IntegerField()
 
+    class Meta: # Order books by title 
+        permissions = [
+            ("can_borrow_books", "Can borrow books"),
+            ("can_manage_books", "Can manage books"),
+        ]
+        
+        indexes = [
+            models.Index(fields=['published_date']),  # Index for date searches
+        ]  
+
     def __str__(self):
-        return self.title
+        return  f"{self.title} by {self.author}"
 
     def reduce_copies(self):
         if self.copies_available > 0:
@@ -24,20 +34,4 @@ class Book(models.Model):
     def increase_copies(self):
         self.copies_available += 1
         self.availability = True
-        self.save()
-
-class Loan(models.Model):
-    book = models.ForeignKey(Book, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    borrow_date = models.DateTimeField(auto_now_add=True)
-    return_date = models.DateTimeField(null=True, blank=True)
-    status = models.BooleanField(default=True)  # True for active loan, False for returned
-
-    def __str__(self):
-        return f"{self.book.title} borrowed by {self.user} on {self.borrow_date}"
-
-    def return_book(self):
-        self.return_date = models.DateTimeField(auto_now=True)
-        self.status = False
-        self.book.increase_copies()
         self.save()

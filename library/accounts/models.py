@@ -1,44 +1,41 @@
 from django.db import models
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 
-# USER Manager.
-class CustomUserManager(BaseUserManager): #  Create a regular user
-    def create_user(self, email, username, password=None):
+from django.contrib.auth.models import AbstractUser, BaseUserManager, PermissionsMixin
+
+class CustomUserManager(BaseUserManager):
+    def create_user(self, email, username, password=None, **extra_fields):
         if not email:
-            raise ValueError('Users must have an email address')
+            raise ValueError('The Email field must be set')
         if not username:
-            raise ValueError('Users must have a username')
-        
+            raise ValueError('The Username field must be set')
         email = self.normalize_email(email)
-        user = self.model(username=username, email=email)
-        user.set_password(password) 
-        user.save(using=self._db)
-        return user
-    
-    def create_superuser(self, username, email, password=None):
-        user = self.create_user(username, email, password)
-        user.is_admin = True
-        user.is_staff = True
-        user.role = 'admin'  # Set role to admin
+        user = self.model(email=email, username=username, **extra_fields)
+        user.set_password(password)
         user.save(using=self._db)
         return user
 
-# Creating an Abstract Custom User base model for the user to define common fiels and functionalities for all users Admina and Librarian
-class User(AbstractBaseUser, PermissionsMixin): 
+    def create_superuser(self, email, username, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+
+        return self.create_user(email, username, password, **extra_fields)
+
+class CustomUser(AbstractUser, PermissionsMixin):
     username = models.CharField(max_length=50, unique=True)
     email = models.EmailField(unique=True)
     date_of_membership = models.DateTimeField(auto_now_add=True)
-    is_active = models.BooleanField(default=True) # determine if user is active
-    is_staff = models.BooleanField(default=False) # determine if user is hass access to admin interface or not
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)  # Admin access to the interface
+    is_superuser = models.BooleanField(default=False)  # Full permissions
 
-    ROLE_CHOICES = [
-        ('admin', 'Admin'),
-        ('librarian', 'Librarian'),
-        ('member', 'Member'),
-    ]
+    ROLE_CHOICES = [('admin', 'Admin'), ('member', 'Member'),]
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='member')
 
-    # Adding related_name to avoid reverse accessor conflicts
     groups = models.ManyToManyField(
         'auth.Group',
         related_name='custom_user_groups',  # Avoid clash with Django's default User model
@@ -50,21 +47,10 @@ class User(AbstractBaseUser, PermissionsMixin):
         blank=True
     )
 
-
-    USERNAME_FIELD = 'username' # The unique identifier for the user during authentication is the email
-    REQUIRED_FIELDS = ['email'] # Additional required fields when creating a user via 
+    USERNAME_FIELD = 'username'  # Can switch to 'email' if desired
+    REQUIRED_FIELDS = ['email']
 
     objects = CustomUserManager()
 
     def __str__(self):
         return self.username
-
-
-
-
-
-
-
-
-        
-         
